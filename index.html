@@ -58,15 +58,27 @@
       border-radius: 8px;
       margin-top: 15px;
     }
-    button.back {
+    button.back, button.submit {
       width: 100%;
       padding: 12px;
       margin-top: 15px;
-      background: #6c757d;
-      color: white;
       border: none;
       border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
     }
+    button.back { background: #6c757d; color: white; }
+    button.submit { background: #28a745; color: white; }
+
+    input, textarea {
+      width: 100%;
+      padding: 10px;
+      margin: 6px 0;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      box-sizing: border-box;
+    }
+
     h2 { text-align: center; }
   </style>
 </head>
@@ -87,7 +99,7 @@
   </div>
   <div class="controls">
     <button class="ctrl-btn" id="prev" onclick="prevItem()">◀</button>
-    <button class="ctrl-btn order-btn" onclick="orderCurrent()">✅ Замовити</button>
+    <button class="ctrl-btn order-btn" onclick="showOrderForm()">✅ Замовити</button>
     <button class="ctrl-btn" id="next" onclick="nextItem()">▶</button>
   </div>
   <div class="description">
@@ -98,12 +110,22 @@
   <button class="back" onclick="goBack()">← Назад до категорій</button>
 </div>
 
+<!-- Екран 3: Форма замовлення -->
+<div id="screen-form" class="screen">
+  <h2>📱 Ваші дані</h2>
+  <p id="form-item-name" style="text-align:center; font-weight:bold;"></p>
+  <input type="text" id="form-name" placeholder="Ваше ім’я (обов’язково)">
+  <input type="tel" id="form-phone" placeholder="Телефон (обов’язково)">
+  <textarea id="form-address" placeholder="Адреса доставки (обов’язково)" rows="2"></textarea>
+  <button class="submit" onclick="submitOrder()">✅ Підтвердити замовлення</button>
+  <button class="back" onclick="showScreen('screen-slider')">← Назад до страви</button>
+</div>
+
 <script>
   const API_URL = "https://script.google.com/macros/s/AKfycbzVGbe8K48FStFAj94HYh-yunTo2ckczl8X0vVU0GlMH_lEB_uQTPGMix9O36zKKs-Ocw/exec";
-  const ORDER_URL = API_URL; // будемо використовувати той самий endpoint для замовлення
-
   let currentCategory = [];
   let currentIndex = 0;
+  let selectedItem = null;
 
   function showScreen(id) {
     document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
@@ -139,6 +161,7 @@
     document.getElementById('item-name').innerText = item.name || "—";
     document.getElementById('item-price').innerText = item.price ? item.price + " грн" : "";
     document.getElementById('item-desc').innerText = item.description || "Опис відсутній";
+    selectedItem = item;
 
     document.getElementById('prev').disabled = (index === 0);
     document.getElementById('next').disabled = (index === currentCategory.length - 1);
@@ -158,27 +181,28 @@
     }
   }
 
-  function orderCurrent() {
-    const item = currentCategory[currentIndex];
-    const name = item.name;
-    const phone = prompt("Ваше ім’я та телефон (через кому):", "Ім’я, +380...");
-    const address = prompt("Адреса доставки:", "вул. Лісова, 10");
+  function showOrderForm() {
+    document.getElementById('form-item-name').innerText = "Замовляєте: " + selectedItem.name;
+    showScreen('screen-form');
+  }
 
-    if (!phone || !address) {
-      Telegram.WebApp?.showAlert("Замовлення скасовано.");
+  function submitOrder() {
+    const name = document.getElementById('form-name').value.trim();
+    const phone = document.getElementById('form-phone').value.trim();
+    const address = document.getElementById('form-address').value.trim();
+
+    if (!name || !phone || !address) {
+      Telegram.WebApp?.showAlert("Будь ласка, заповніть усі поля!");
       return;
     }
 
-    const [userName, userPhone] = phone.split(",").map(s => s.trim());
-
-    // Формат: items=ID:1
-    const url = `${ORDER_URL}?items=${item.id}:1&name=${encodeURIComponent(userName)}&phone=${encodeURIComponent(userPhone)}&address=${encodeURIComponent(address)}`;
+    const url = `${API_URL}?items=${selectedItem.id}:1&name=${encodeURIComponent(name)}&phone=${encodeURIComponent(phone)}&address=${encodeURIComponent(address)}`;
 
     fetch(url)
       .then(() => {
         Telegram.WebApp?.showPopup({
-          title: "✅ Замовлено!",
-          message: `Ви замовили:\n${item.name}\n\nОчікуйте дзвінка!`
+          title: "✅ Успіх!",
+          message: `Замовлено:\n${selectedItem.name}\n\nОчікуйте дзвінка!`
         }, () => {
           Telegram.WebApp?.close();
         });
