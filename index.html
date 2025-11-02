@@ -2,58 +2,108 @@
 <html>
 <head>
   <title>Суші Бот</title>
-  <style>body{font-family:Arial;padding:20px;}.item{margin:10px 0;padding:10px;border:1px solid #ccc;}.cart{background:#f9f9f9;padding:15px;margin-top:20px;}</style>
+  <style>
+    body { font-family: Arial; padding: 20px; }
+    .item { 
+      margin: 15px 0; 
+      padding: 12px; 
+      border: 1px solid #ddd; 
+      border-radius: 8px; 
+      display: flex; 
+      align-items: center; 
+    }
+    .cart { 
+      background: #f0fff0; 
+      padding: 16px; 
+      margin-top: 20px; 
+      border-radius: 8px; 
+    }
+    button { 
+      padding: 6px 12px; 
+      background: #ff6347; 
+      color: white; 
+      border: none; 
+      border-radius: 4px; 
+      cursor: pointer; 
+    }
+    button:hover { background: #e0553b; }
+    img { 
+      width: 80px; 
+      height: 80px; 
+      object-fit: cover; 
+      border-radius: 6px; 
+      margin-right: 15px; 
+      border: 1px solid #eee;
+    }
+  </style>
 </head>
 <body>
-  <h1>Меню</h1>
+  <h1>🍣 Меню Сетів</h1>
   <div id="menu"></div>
 
   <div class="cart">
-    <h2>Кошик</h2>
+    <h2>🛒 Кошик</h2>
     <div id="cart-items"></div>
-    <a id="orderLink" href="#" style="display:none;">
+    <a id="orderLink" href="#" style="display:none; margin-top:10px;">
       <button>✅ Замовити</button>
     </a>
   </div>
 
   <script>
     let cart = [];
-    const API_URL = "https://script.google.com/macros/s/AKfycbzssbuflx7nQKsVJ0Vxz1j8qAYIYKCzBWXEyqb4CV6o3WUDftvA4yAjLMSZ2e8tP8a0jQ/exec"; // твій URL
+    const API_URL = "https://script.google.com/macros/s/AKfycbzssbuflx7nQKsVJ0Vxz1j8qAYIYKCzBWXEyqb4CV6o3WUDftvA4yAjLMSZ2e8tP8a0jQ/exec";
 
+    // Завантажити меню з Google Таблиці
     fetch(API_URL)
       .then(res => res.json())
       .then(menu => {
         menu.forEach(item => {
           const el = document.createElement("div");
           el.className = "item";
+          // Додаємо зображення зі стовпця "image"
           el.innerHTML = `
-            <strong>${item.name}</strong> — ${item.price} грн
-            <button onclick="addToCart(${item.id})">+</button>
+            <img src="${item.image}" alt="${item.name}" loading="lazy">
+            <div>
+              <strong>${item.name}</strong><br>
+              ${item.price} грн<br>
+              <button onclick="addToCart(${item.id})">➕ Додати</button>
+            </div>
           `;
           document.getElementById("menu").appendChild(el);
         });
+      })
+      .catch(err => {
+        alert("❌ Не вдалося завантажити меню: " + err.message);
       });
 
     function addToCart(id) {
       const exists = cart.find(i => i.id == id);
-      if (exists) exists.qty++;
-      else cart.push({ id, qty: 1 });
+      if (exists) {
+        exists.qty++;
+      } else {
+        cart.push({ id, qty: 1 });
+      }
       renderCart();
     }
 
     function renderCart() {
       const div = document.getElementById("cart-items");
       const link = document.getElementById("orderLink");
+      
       if (cart.length === 0) {
-        div.innerHTML = "Кошик порожній";
+        div.innerHTML = "<em>Кошик порожній</em>";
         link.style.display = "none";
         return;
       }
 
-      // Формат: 1:2,3:1
+      // Формат для передачі: "1:2,3:1"
       const itemsStr = cart.map(i => `${i.id}:${i.qty}`).join(",");
       link.href = API_URL + "?items=" + encodeURIComponent(itemsStr);
-      div.innerHTML = cart.map(i => `ID ${i.id}: ${i.qty} шт`).join("<br>");
+      
+      div.innerHTML = cart.map(i => 
+        `<div>✅ ID ${i.id}: ${i.qty} шт</div>`
+      ).join("");
+      
       link.style.display = "inline-block";
     }
   </script>
