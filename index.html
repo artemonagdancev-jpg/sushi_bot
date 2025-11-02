@@ -1,29 +1,25 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Замовляй Суші</title>
-  <style>
-    body { font-family: Arial; padding: 20px; }
-    .item { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
-    .cart { background: #f9f9f9; padding: 15px; margin-top: 20px; }
-    button { padding: 5px 10px; cursor: pointer; }
-  </style>
+  <title>Суші Бот</title>
+  <style>body{font-family:Arial;padding:20px;}.item{margin:10px 0;padding:10px;border:1px solid #ccc;}.cart{background:#f9f9f9;padding:15px;margin-top:20px;}</style>
 </head>
 <body>
-  <h1>Меню Сетів</h1>
+  <h1>Меню</h1>
   <div id="menu"></div>
 
   <div class="cart">
     <h2>Кошик</h2>
     <div id="cart-items"></div>
-    <button onclick="placeOrder()">✅ Замовити</button>
+    <a id="orderLink" href="#" style="display:none;">
+      <button>✅ Замовити</button>
+    </a>
   </div>
 
   <script>
     let cart = [];
-    const API_URL = "https://script.google.com/macros/s/AKfycbxoAUcO8yMttpDFKy4pvNMkUHi_SO_27hxlmEjnMAagxlKg-yL9y39wgVq1IEZ6oUBMCA/exec"; // ⚠️ ЗАМІНИ ЦЕ НА ТВІЙ URL!
+    const API_URL = "https://script.google.com/macros/s/AKfycbzssbuflx7nQKsVJ0Vxz1j8qAYIYKCzBWXEyqb4CV6o3WUDftvA4yAjLMSZ2e8tP8a0jQ/exec"; // твій URL
 
-    // Завантажити меню
     fetch(API_URL)
       .then(res => res.json())
       .then(menu => {
@@ -31,7 +27,6 @@
           const el = document.createElement("div");
           el.className = "item";
           el.innerHTML = `
-            <img src="${item.image}" width="80" style="vertical-align:middle; margin-right:10px;">
             <strong>${item.name}</strong> — ${item.price} грн
             <button onclick="addToCart(${item.id})">+</button>
           `;
@@ -41,46 +36,25 @@
 
     function addToCart(id) {
       const exists = cart.find(i => i.id == id);
-      if (exists) {
-        exists.qty++;
-      } else {
-        cart.push({ id, qty: 1 });
-      }
+      if (exists) exists.qty++;
+      else cart.push({ id, qty: 1 });
       renderCart();
     }
 
     function renderCart() {
-      const cartDiv = document.getElementById("cart-items");
+      const div = document.getElementById("cart-items");
+      const link = document.getElementById("orderLink");
       if (cart.length === 0) {
-        cartDiv.innerHTML = "Кошик порожній";
+        div.innerHTML = "Кошик порожній";
+        link.style.display = "none";
         return;
       }
 
-      cartDiv.innerHTML = cart.map(i => {
-        return `<div>ID ${i.id}: ${i.qty} шт</div>`;
-      }).join("");
-    }
-
-    function placeOrder() {
-      if (cart.length === 0) {
-        alert("Кошик порожній!");
-        return;
-      }
-
-      fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items: cart })
-      })
-      .then(res => res.json())
-      .then(data => {
-        alert("✅ Замовлення №" + data.orderId + " прийнято!");
-        cart = [];
-        renderCart();
-      })
-      .catch(err => {
-        alert("❌ Помилка: " + err.message);
-      });
+      // Формат: 1:2,3:1
+      const itemsStr = cart.map(i => `${i.id}:${i.qty}`).join(",");
+      link.href = API_URL + "?items=" + encodeURIComponent(itemsStr);
+      div.innerHTML = cart.map(i => `ID ${i.id}: ${i.qty} шт`).join("<br>");
+      link.style.display = "inline-block";
     }
   </script>
 </body>
