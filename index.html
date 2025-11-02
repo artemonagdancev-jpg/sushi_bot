@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Замовляй Суші</title>
+  <style>
+    body { font-family: Arial; padding: 20px; }
+    .item { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
+    .cart { background: #f9f9f9; padding: 15px; margin-top: 20px; }
+    button { padding: 5px 10px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>Меню Сетів</h1>
+  <div id="menu"></div>
+
+  <div class="cart">
+    <h2>Кошик</h2>
+    <div id="cart-items"></div>
+    <button onclick="placeOrder()">✅ Замовити</button>
+  </div>
+
+  <script>
+    let cart = [];
+    const API_URL = "https://script.google.com/macros/s/AKfycbzZs-1uactM8ivCWnr83g8NuFk_5pNjFDr4jYra9o5ouqkXwSRng3JbqKb7e8UmXXsfAw/exec"; // ⚠️ ЗАМІНИ ЦЕ НА ТВІЙ URL!
+
+    // Завантажити меню
+    fetch(API_URL)
+      .then(res => res.json())
+      .then(menu => {
+        menu.forEach(item => {
+          const el = document.createElement("div");
+          el.className = "item";
+          el.innerHTML = `
+            <img src="${item.image}" width="80" style="vertical-align:middle; margin-right:10px;">
+            <strong>${item.name}</strong> — ${item.price} грн
+            <button onclick="addToCart(${item.id})">+</button>
+          `;
+          document.getElementById("menu").appendChild(el);
+        });
+      });
+
+    function addToCart(id) {
+      const exists = cart.find(i => i.id == id);
+      if (exists) {
+        exists.qty++;
+      } else {
+        cart.push({ id, qty: 1 });
+      }
+      renderCart();
+    }
+
+    function renderCart() {
+      const cartDiv = document.getElementById("cart-items");
+      if (cart.length === 0) {
+        cartDiv.innerHTML = "Кошик порожній";
+        return;
+      }
+
+      cartDiv.innerHTML = cart.map(i => {
+        return `<div>ID ${i.id}: ${i.qty} шт</div>`;
+      }).join("");
+    }
+
+    function placeOrder() {
+      if (cart.length === 0) {
+        alert("Кошик порожній!");
+        return;
+      }
+
+      fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: cart })
+      })
+      .then(res => res.json())
+      .then(data => {
+        alert("✅ Замовлення №" + data.orderId + " прийнято!");
+        cart = [];
+        renderCart();
+      })
+      .catch(err => {
+        alert("❌ Помилка: " + err.message);
+      });
+    }
+  </script>
+</body>
+</html>
