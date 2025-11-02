@@ -93,37 +93,44 @@
       }).join("");
     }
 
-    function placeOrder() {
-      const name = document.getElementById("name").value.trim();
-      const phone = document.getElementById("phone").value.trim();
-      const address = document.getElementById("address").value.trim();
+   function placeOrder() {
+  const name = document.getElementById("name").value.trim();
+  const phone = document.getElementById("phone").value.trim();
+  const address = document.getElementById("address").value.trim();
 
-      if (!name || !phone || !address) {
-        alert("Будь ласка, заповніть усі поля!");
-        return;
-      }
-
-      const itemsStr = cart.map(i => `${i.id}:${i.qty}`).join(",");
-      const url = `${API_URL}?items=${encodeURIComponent(itemsStr)}&name=${encodeURIComponent(name)}&phone=${encodeURIComponent(phone)}&address=${encodeURIComponent(address)}`;
-
-      fetch(url)
-        .then(res => res.text())
-        .then(() => {
-          // Повідомляємо Telegram, що замовлення створено
-          if (window.Telegram && Telegram.WebApp) {
-            Telegram.WebApp.sendData(JSON.stringify({
-              name, phone, address, items: cart
-            }));
-            Telegram.WebApp.close();
-          } else {
-            alert("✅ Замовлення прийнято!");
-          }
-        })
-        .catch(err => {
-          alert("❌ Помилка: " + err.message);
-        });
+  if (!name || !phone || !address) {
+    // Використовуємо Telegram Web App API замість alert()
+    if (window.Telegram?.WebApp) {
+      Telegram.WebApp.showAlert("Будь ласка, заповніть усі поля!");
+    } else {
+      alert("Будь ласка, заповніть усі поля!");
     }
+    return;
+  }
+
+  const itemsStr = cart.map(i => `${i.id}:${i.qty}`).join(",");
+  const url = `${API_URL}?items=${encodeURIComponent(itemsStr)}&name=${encodeURIComponent(name)}&phone=${encodeURIComponent(phone)}&address=${encodeURIComponent(address)}`;
+
+  fetch(url)
+    .then(() => {
+      if (window.Telegram?.WebApp) {
+        Telegram.WebApp.showPopup({ title: "✅ Успіх!", message: "Замовлення прийнято!\nМи зателефонуємо вам найближчим часом." }, () => {
+          Telegram.WebApp.close();
+        });
+      } else {
+        alert("✅ Замовлення прийнято!");
+      }
+    })
+    .catch(err => {
+      if (window.Telegram?.WebApp) {
+        Telegram.WebApp.showAlert("❌ Помилка: " + (err.message || "невідома"));
+      } else {
+        alert("❌ Помилка: " + err.message);
+      }
+    });
+}
   </script>
 </body>
 </html>
+
 
