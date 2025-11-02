@@ -11,14 +11,47 @@
       background: #f0fff0; padding: 16px; margin-top: 20px; border-radius: 8px; 
     }
     input, button { 
-      padding: 8px; margin: 5px 0; border: 1px solid #ccc; border-radius: 4px; width: 100%; box-sizing: border-box;
+      padding: 8px; margin: 5px 0; border: 1px solid #ccc; border-radius: 4px; 
     }
-    button { 
-      background: #ff6347; color: white; border: none; cursor: pointer; 
+    .cart-item { 
+      display: flex; 
+      align-items: center; 
+      justify-content: space-between; 
+      margin: 8px 0; 
+      padding: 8px; 
+      background: white; 
+      border-radius: 6px; 
     }
-    button:hover { background: #e0553b; }
+    .qty-controls { 
+      display: flex; 
+      align-items: center; 
+      gap: 8px; 
+    }
+    .qty-btn { 
+      width: 30px; 
+      height: 30px; 
+      font-weight: bold; 
+      background: #f1f1f1; 
+      border: 1px solid #ccc; 
+      border-radius: 4px; 
+      cursor: pointer; 
+    }
+    .qty-value { 
+      min-width: 24px; 
+      text-align: center; 
+    }
+    button.main-btn { 
+      background: #ff6347; 
+      color: white; 
+      border: none; 
+      cursor: pointer; 
+      width: 100%; 
+      padding: 10px; 
+      font-size: 16px; 
+      margin-top: 10px;
+    }
+    button.main-btn:hover { background: #e0553b; }
     img { width: 80px; height: 80px; object-fit: cover; border-radius: 6px; margin-right: 15px; }
-    .cart-item { display: flex; justify-content: space-between; margin: 5px 0; }
   </style>
 </head>
 <body>
@@ -34,22 +67,21 @@
     <input type="tel" id="phone" placeholder="Телефон (обов’язково)" required><br>
     <input type="text" id="address" placeholder="Адреса доставки (обов’язково)" required><br>
 
-    <a id="orderLink" href="#" style="display:none; text-align:center; margin-top:10px;">
-      <button>✅ Замовити</button>
+    <a id="orderLink" href="#" style="display:none;">
+      <button class="main-btn">✅ Замовити</button>
     </a>
   </div>
 
   <script>
     let cart = [];
-    let menuMap = {}; // Об'єкт для швидкого пошуку назви за ID
+    let menuMap = {};
     const API_URL = "https://script.google.com/macros/s/AKfycbzssbuflx7nQKsVJ0Vxz1j8qAYIYKCzBWXEyqb4CV6o3WUDftvA4yAjLMSZ2e8tP8a0jQ/exec";
 
     fetch(API_URL)
       .then(res => res.json())
       .then(menu => {
-        // Зберігаємо меню як об'єкт для швидкого доступу
         menu.forEach(item => {
-          menuMap[item.id] = item.name; // наприклад: menuMap["2"] = "Сет Френдс"
+          menuMap[item.id] = item.name;
         });
 
         menu.forEach(item => {
@@ -77,6 +109,18 @@
       renderCart();
     }
 
+    function updateQty(id, delta) {
+      const item = cart.find(i => i.id == id);
+      if (item) {
+        item.qty += delta;
+        if (item.qty <= 0) {
+          // Видаляємо, якщо 0 або менше
+          cart = cart.filter(i => i.id != id);
+        }
+        renderCart();
+      }
+    }
+
     function renderCart() {
       const div = document.getElementById("cart-items");
       const link = document.getElementById("orderLink");
@@ -87,13 +131,21 @@
         return;
       }
 
-      // Генеруємо HTML для кожного елемента кошика
       div.innerHTML = cart.map(i => {
-        const name = menuMap[i.id] || `ID ${i.id}`; // якщо не знайдено — показуємо ID
-        return `<div class="cart-item">✅ ${name}: ${i.qty} шт</div>`;
+        const name = menuMap[i.id] || `ID ${i.id}`;
+        return `
+          <div class="cart-item">
+            <span>✅ ${name}</span>
+            <div class="qty-controls">
+              <button class="qty-btn" onclick="updateQty(${i.id}, -1)">–</button>
+              <span class="qty-value">${i.qty}</span>
+              <button class="qty-btn" onclick="updateQty(${i.id}, 1)">+</button>
+            </div>
+          </div>
+        `;
       }).join("");
 
-      link.style.display = "inline-block";
+      link.style.display = "block";
     }
 
     document.getElementById("orderLink").addEventListener("click", function(e) {
