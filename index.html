@@ -35,25 +35,24 @@
       border-radius: 12px;
       margin: 10px 0;
     }
-    .qty-controls {
+    .controls {
       display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      margin: 10px 0;
+      justify-content: space-between;
+      margin: 20px 0;
     }
-    .qty-btn {
-      width: 36px;
-      height: 36px;
-      border: 1px solid #ccc;
-      background: #f8f9fa;
-      border-radius: 6px;
-      font-size: 16px;
+    .ctrl-btn {
+      padding: 12px 20px;
+      font-size: 18px;
+      border: none;
+      border-radius: 10px;
+      background: #f0f0f0;
       cursor: pointer;
+      min-width: 70px;
     }
-    .qty-val {
-      min-width: 30px;
-      text-align: center;
+    .add-btn {
+      background: #17a2b8 !important;
+      color: white;
+      font-weight: bold;
     }
     .cart-btn {
       width: 100%;
@@ -97,9 +96,30 @@
     .cart-item {
       padding: 10px 0;
       border-bottom: 1px solid #eee;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
     }
-    .cart-item-name {
-      font-weight: bold;
+    .cart-item-info {
+      flex: 1;
+    }
+    .cart-item-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .qty-btn {
+      width: 32px;
+      height: 32px;
+      border: 1px solid #ccc;
+      background: #f8f9fa;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .qty-val {
+      min-width: 28px;
+      text-align: center;
     }
     .cutlery-controls {
       margin-top: 15px;
@@ -125,20 +145,15 @@
   <div class="slider">
     <img id="item-image" src="" alt="Страва">
   </div>
-  <div class="qty-controls">
-    <button class="qty-btn" onclick="changeTempQty(-1)">–</button>
-    <span class="qty-val" id="temp-qty">1</span>
-    <button class="qty-btn" onclick="changeTempQty(1)">+</button>
-  </div>
-  <div class="controls" style="margin:0;">
+  <div class="controls">
     <button class="ctrl-btn" id="prev" onclick="prevItem()">◀</button>
-    <button class="ctrl-btn add-btn" style="background:#17a2b8;color:white;" onclick="addToCartWithQty()">✅ Додати</button>
+    <button class="ctrl-btn add-btn" onclick="addToCart()">✅ Додати</button>
     <button class="ctrl-btn" id="next" onclick="nextItem()">▶</button>
   </div>
   <div class="description">
-    <h3 id="item-name">—</h3>
-    <p><strong id="item-price">—</strong></p>
-    <p id="item-desc">Опис відсутній</p>
+    <h3 id="item-name"></h3>
+    <p><strong id="item-price"></strong></p>
+    <p id="item-desc"></p>
   </div>
   <button class="cart-btn" onclick="showCart()">🛒 Корзина (<span id="cart-count">0</span>)</button>
   <button class="back" onclick="goBack()">← Назад до категорій</button>
@@ -151,11 +166,11 @@
   
   <div class="cutlery-controls">
     <div>🥢 Прибори (ID 6):</div>
-    <div class="qty-controls" style="justify-content:flex-start; margin-top:8px;">
+    <div class="cart-item-controls" style="justify-content:flex-start; margin-top:10px;">
       <button class="qty-btn" onclick="changeCutlery(-1)">–</button>
       <span class="qty-val" id="cutlery-val">0</span>
       <button class="qty-btn" onclick="changeCutlery(1)">+</button>
-      <span style="margin-left:10px;">(додатково безкоштовно)</span>
+      <span style="margin-left:10px;">(безкоштовно)</span>
     </div>
   </div>
 
@@ -175,13 +190,12 @@
 </div>
 
 <script>
-  const API_URL = "https://script.google.com/macros/s/AKfycbzVGbe8K48FStFAj94HYh-yunTo2ckczl8X0vVU0GlMH_lEB_uQTPGMix9O36zKKs-Ocw/exec";
+  const API_URL = "https://script.google.com/macros/s/AKfycbyD-JmTz5wYVtFBBf9OUhHOyW0GfVrlOihMh-XrLoxtpm7LeM39x7iqpX-STgKgEaUnJQ/exec";
   let currentCategory = [];
   let currentIndex = 0;
   let selectedItem = null;
   let cart = []; // [{id, name, price, qty}, ...]
-  let tempQty = 1;
-  let cutleryQty = 0; // прибори (ID = 6)
+  let cutleryQty = 0;
 
   function showScreen(id) {
     document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
@@ -197,10 +211,7 @@
     fetch(API_URL + "?category=" + category)
       .then(res => res.json())
       .then(data => {
-        if (data.error) {
-          alert("Помилка завантаження меню: " + data.error);
-          return;
-        }
+        if (data.error) throw new Error(data.error);
         currentCategory = data;
         currentIndex = 0;
         if (currentCategory.length > 0) {
@@ -211,28 +222,17 @@
         }
       })
       .catch(err => {
-        alert("Помилка: " + err.message);
+        alert("Помилка завантаження меню: " + err.message);
       });
   }
 
   function showItem(index) {
     const item = currentCategory[index];
-    if (!item) {
-      document.getElementById('item-image').src = "https://via.placeholder.com/400x300?text=Фото+відсутнє";
-      document.getElementById('item-name').innerText = "—";
-      document.getElementById('item-price').innerText = "—";
-      document.getElementById('item-desc').innerText = "Опис відсутній";
-      selectedItem = null;
-      return;
-    }
-
     document.getElementById('item-image').src = item.image || "https://via.placeholder.com/400x300?text=Фото+відсутнє";
     document.getElementById('item-name').innerText = item.name || "—";
     document.getElementById('item-price').innerText = item.price ? item.price + " грн" : "";
     document.getElementById('item-desc').innerText = item.description || "Опис відсутній";
     selectedItem = item;
-    tempQty = 1;
-    document.getElementById('temp-qty').innerText = tempQty;
 
     document.getElementById('prev').disabled = (index === 0);
     document.getElementById('next').disabled = (index === currentCategory.length - 1);
@@ -252,37 +252,27 @@
     }
   }
 
-  function changeTempQty(delta) {
-    tempQty = Math.max(1, tempQty + delta);
-    document.getElementById('temp-qty').innerText = tempQty;
-  }
-
-  function addToCartWithQty() {
-    if (!selectedItem) {
-      alert("Не вдалося додати — немає даних про страву.");
-      return;
-    }
-
+  function addToCart() {
+    if (!selectedItem) return;
     const existing = cart.find(c => c.id === selectedItem.id);
     if (existing) {
-      existing.qty += tempQty;
+      existing.qty++;
     } else {
       cart.push({
         id: selectedItem.id,
         name: selectedItem.name,
         price: selectedItem.price,
-        qty: tempQty
+        qty: 1
       });
     }
     updateCartBadge();
-    Telegram.WebApp?.showAlert(`✅ Додано ${tempQty} шт:\n${selectedItem.name}`);
-    tempQty = 1;
-    document.getElementById('temp-qty').innerText = 1;
+    Telegram.WebApp?.showAlert(`✅ Додано:\n${selectedItem.name}`);
   }
 
   function changeCutlery(delta) {
     cutleryQty = Math.max(0, cutleryQty + delta);
     document.getElementById('cutlery-val').innerText = cutleryQty;
+    updateCartBadge();
   }
 
   function updateCartBadge() {
@@ -313,8 +303,15 @@
     cart.forEach(c => {
       html += `
         <div class="cart-item">
-          <div class="cart-item-name">${c.name}</div>
-          <div>${c.qty} шт × ${c.price} грн = ${c.qty * c.price} грн</div>
+          <div class="cart-item-info">
+            <div class="cart-item-name">${c.name}</div>
+            <div>${c.qty} шт × ${c.price} грн</div>
+          </div>
+          <div class="cart-item-controls">
+            <button class="qty-btn" onclick="changeQty(${c.id}, -1)">–</button>
+            <span class="qty-val">${c.qty}</span>
+            <button class="qty-btn" onclick="changeQty(${c.id}, 1)">+</button>
+          </div>
         </div>
       `;
     });
@@ -322,8 +319,15 @@
     if (cutleryQty > 0) {
       html += `
         <div class="cart-item">
-          <div class="cart-item-name">🥢 Прибори</div>
-          <div>${cutleryQty} шт × 0 грн = 0 грн</div>
+          <div class="cart-item-info">
+            <div class="cart-item-name">🥢 Прибори</div>
+            <div>${cutleryQty} шт</div>
+          </div>
+          <div class="cart-item-controls">
+            <button class="qty-btn" onclick="changeCutlery(-1)">–</button>
+            <span class="qty-val">${cutleryQty}</span>
+            <button class="qty-btn" onclick="changeCutlery(1)">+</button>
+          </div>
         </div>
       `;
     }
@@ -332,6 +336,18 @@
     html += `<div style="margin-top:15px; font-weight:bold; font-size:18px;">Разом: ${total} грн</div>`;
 
     document.getElementById('cart-items').innerHTML = html;
+  }
+
+  function changeQty(id, delta) {
+    const item = cart.find(c => c.id === id);
+    if (item) {
+      item.qty += delta;
+      if (item.qty <= 0) {
+        cart = cart.filter(c => c.id !== id);
+      }
+      renderCart();
+      updateCartBadge();
+    }
   }
 
   function showOrderForm() {
@@ -348,34 +364,46 @@
     const address = document.getElementById('form-address').value.trim();
 
     if (!name || !phone || !address) {
-      Telegram.WebApp?.showAlert("Будь ласка, заповніть усі поля!");
+      Telegram.WebApp?.showAlert("Заповніть усі поля!");
       return;
     }
 
-    // Формуємо items: id1:qty1,id2:qty2,...,6:cutleryQty
-    let items = cart.map(c => `${c.id}:${c.qty}`);
+    // Формуємо об'єкт замовлення
+    const orderData = {
+      items: cart.map(c => ({ id: c.id, qty: c.qty })),
+      name,
+      phone,
+      address
+    };
+
+    // Включаємо прибори, якщо є
     if (cutleryQty > 0) {
-      items.push(`6:${cutleryQty}`);
+      orderData.items.push({ id: 6, qty: cutleryQty });
     }
-    const itemsStr = items.join(",");
 
-    const url = `${API_URL}?items=${encodeURIComponent(itemsStr)}&name=${encodeURIComponent(name)}&phone=${encodeURIComponent(phone)}&address=${encodeURIComponent(address)}`;
-
-    fetch(url)
-      .then(() => {
+    // Відправляємо POST-запит
+    fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(orderData)
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
         cart = [];
         cutleryQty = 0;
         updateCartBadge();
         Telegram.WebApp?.showPopup({
-          title: "✅ Замовлення прийнято!",
-          message: "Дякуємо! Ми зателефонуємо вам найближчим часом."
-        }, () => {
-          Telegram.WebApp?.close();
-        });
-      })
-      .catch(err => {
-        Telegram.WebApp?.showAlert("Помилка: " + err.message);
-      });
+          title: "✅ Успіх!",
+          message: `Замовлення №${data.orderId} прийнято!`
+        }, () => Telegram.WebApp?.close());
+      } else {
+        throw new Error(data.error || "Невідома помилка");
+      }
+    })
+    .catch(err => {
+      Telegram.WebApp?.showAlert("Помилка: " + err.message);
+    });
   }
 </script>
 </body>
