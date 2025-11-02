@@ -136,9 +136,9 @@
     <button class="ctrl-btn" id="next" onclick="nextItem()">▶</button>
   </div>
   <div class="description">
-    <h3 id="item-name"></h3>
-    <p><strong id="item-price"></strong></p>
-    <p id="item-desc"></p>
+    <h3 id="item-name">—</h3>
+    <p><strong id="item-price">—</strong></p>
+    <p id="item-desc">Опис відсутній</p>
   </div>
   <button class="cart-btn" onclick="showCart()">🛒 Корзина (<span id="cart-count">0</span>)</button>
   <button class="back" onclick="goBack()">← Назад до категорій</button>
@@ -175,7 +175,7 @@
 </div>
 
 <script>
-  const API_URL = "https://script.google.com/macros/s/AKfycbzssbuflx7nQKsVJ0Vxz1j8qAYIYKCzBWXEyqb4CV6o3WUDftvA4yAjLMSZ2e8tP8a0jQ/exec";
+  const API_URL = "https://script.google.com/macros/s/AKfycbzVGbe8K48FStFAj94HYh-yunTo2ckczl8X0vVU0GlMH_lEB_uQTPGMix9O36zKKs-Ocw/exec";
   let currentCategory = [];
   let currentIndex = 0;
   let selectedItem = null;
@@ -197,7 +197,10 @@
     fetch(API_URL + "?category=" + category)
       .then(res => res.json())
       .then(data => {
-        if (data.error) throw new Error(data.error);
+        if (data.error) {
+          alert("Помилка завантаження меню: " + data.error);
+          return;
+        }
         currentCategory = data;
         currentIndex = 0;
         if (currentCategory.length > 0) {
@@ -214,6 +217,15 @@
 
   function showItem(index) {
     const item = currentCategory[index];
+    if (!item) {
+      document.getElementById('item-image').src = "https://via.placeholder.com/400x300?text=Фото+відсутнє";
+      document.getElementById('item-name').innerText = "—";
+      document.getElementById('item-price').innerText = "—";
+      document.getElementById('item-desc').innerText = "Опис відсутній";
+      selectedItem = null;
+      return;
+    }
+
     document.getElementById('item-image').src = item.image || "https://via.placeholder.com/400x300?text=Фото+відсутнє";
     document.getElementById('item-name').innerText = item.name || "—";
     document.getElementById('item-price').innerText = item.price ? item.price + " грн" : "";
@@ -246,6 +258,11 @@
   }
 
   function addToCartWithQty() {
+    if (!selectedItem) {
+      alert("Не вдалося додати — немає даних про страву.");
+      return;
+    }
+
     const existing = cart.find(c => c.id === selectedItem.id);
     if (existing) {
       existing.qty += tempQty;
