@@ -38,7 +38,7 @@
     .controls {
       display: flex;
       justify-content: space-between;
-      margin: 20px 0;
+      margin: 15px 0;
     }
     .ctrl-btn {
       padding: 10px 16px;
@@ -48,9 +48,20 @@
       background: #f0f0f0;
       cursor: pointer;
     }
-    .order-btn {
-      background: #2e8b57 !important;
+    .add-btn {
+      background: #17a2b8 !important;
       color: white;
+    }
+    .cart-btn {
+      width: 100%;
+      padding: 10px;
+      background: #ffc107;
+      color: #212529;
+      border: none;
+      border-radius: 8px;
+      font-weight: bold;
+      margin: 10px 0;
+      cursor: pointer;
     }
     .description {
       background: #f9f9f9;
@@ -79,6 +90,13 @@
       box-sizing: border-box;
     }
 
+    .cart-item {
+      padding: 8px;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      justify-content: space-between;
+    }
+
     h2 { text-align: center; }
   </style>
 </head>
@@ -99,7 +117,7 @@
   </div>
   <div class="controls">
     <button class="ctrl-btn" id="prev" onclick="prevItem()">◀</button>
-    <button class="ctrl-btn order-btn" onclick="showOrderForm()">✅ Замовити</button>
+    <button class="ctrl-btn add-btn" onclick="addToCart()">➕ Додати до замовлення</button>
     <button class="ctrl-btn" id="next" onclick="nextItem()">▶</button>
   </div>
   <div class="description">
@@ -107,18 +125,26 @@
     <p><strong id="item-price"></strong></p>
     <p id="item-desc"></p>
   </div>
+  <button class="cart-btn" onclick="showCart()">🛒 Корзина (<span id="cart-count">0</span>)</button>
   <button class="back" onclick="goBack()">← Назад до категорій</button>
 </div>
 
-<!-- Екран 3: Форма замовлення -->
+<!-- Екран 3: Корзина -->
+<div id="screen-cart" class="screen">
+  <h2>🛒 Ваше замовлення</h2>
+  <div id="cart-items">Кошик порожній</div>
+  <button class="submit" onclick="showOrderForm()">✅ Оформити замовлення</button>
+  <button class="back" onclick="showScreen('screen-slider')">← Назад до меню</button>
+</div>
+
+<!-- Екран 4: Форма замовлення -->
 <div id="screen-form" class="screen">
   <h2>📱 Ваші дані</h2>
-  <p id="form-item-name" style="text-align:center; font-weight:bold;"></p>
   <input type="text" id="form-name" placeholder="Ваше ім’я (обов’язково)">
   <input type="tel" id="form-phone" placeholder="Телефон (обов’язково)">
   <textarea id="form-address" placeholder="Адреса доставки (обов’язково)" rows="2"></textarea>
   <button class="submit" onclick="submitOrder()">✅ Підтвердити замовлення</button>
-  <button class="back" onclick="showScreen('screen-slider')">← Назад до страви</button>
+  <button class="back" onclick="showScreen('screen-cart')">← Назад до корзини</button>
 </div>
 
 <script>
@@ -126,10 +152,12 @@
   let currentCategory = [];
   let currentIndex = 0;
   let selectedItem = null;
+  let cart = []; // [{item, qty}, ...]
 
   function showScreen(id) {
     document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
     document.getElementById(id).classList.add('active');
+    if (id === 'screen-cart') renderCart();
   }
 
   function goBack() {
@@ -181,8 +209,53 @@
     }
   }
 
+  function addToCart() {
+    const existing = cart.find(c => c.item.id === selectedItem.id);
+    if (existing) {
+      existing.qty++;
+    } else {
+      cart.push({ item: selectedItem, qty: 1 });
+    }
+    updateCartBadge();
+    Telegram.WebApp?.showAlert(`✅ Додано:\n${selectedItem.name}`);
+  }
+
+  function updateCartBadge() {
+    const total = cart.reduce((sum, c) => sum + c.qty, 0);
+    document.getElementById('cart-count').innerText = total;
+  }
+
+  function showCart() {
+    showScreen('screen-cart');
+  }
+
+  function renderCart() {
+    if (cart.length === 0) {
+      document.getElementById('cart-items').innerHTML = "<p>Кошик порожній</p>";
+      return;
+    }
+
+    let html = '';
+    cart.forEach(c => {
+      html += `
+        <div class="cart-item">
+          <div>${c.item.name}</div>
+          <div>${c.qty} шт × ${c.item.price} грн</div>
+        </div>
+      `;
+    });
+
+    const total = cart.reduce((sum, c) => sum + c.qty * c.item.price, 0);
+    html += `<div style="margin-top:10px; font-weight:bold;">Разом: ${total} грн</div>`;
+
+    document.getElementById('cart-items').innerHTML = html;
+  }
+
   function showOrderForm() {
-    document.getElementById('form-item-name').innerText = "Замовляєте: " + selectedItem.name;
+    if (cart.length === 0) {
+      Telegram.WebApp?.showAlert("Кошик порожній!");
+      return;
+    }
     showScreen('screen-form');
   }
 
@@ -196,13 +269,17 @@
       return;
     }
 
-    const url = `${API_URL}?items=${selectedItem.id}:1&name=${encodeURIComponent(name)}&phone=${encodeURIComponent(phone)}&address=${encodeURIComponent(address)}`;
+    // Формат: items=id1:qty1,id2:qty2,...
+    const itemsStr = cart.map(c => `${c.item.id}:${c.qty}`).join(",");
+    const url = `${API_URL}?items=${encodeURIComponent(itemsStr)}&name=${encodeURIComponent(name)}&phone=${encodeURIComponent(phone)}&address=${encodeURIComponent(address)}`;
 
     fetch(url)
       .then(() => {
+        cart = []; // очищаємо кошик
+        updateCartBadge();
         Telegram.WebApp?.showPopup({
-          title: "✅ Успіх!",
-          message: `Замовлено:\n${selectedItem.name}\n\nОчікуйте дзвінка!`
+          title: "✅ Замовлення прийнято!",
+          message: "Дякуємо! Ми зателефонуємо вам найближчим часом."
         }, () => {
           Telegram.WebApp?.close();
         });
