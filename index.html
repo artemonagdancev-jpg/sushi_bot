@@ -1,140 +1,192 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta property="og:title" content="Суші Бот — Замов онлайн" />
-<meta property="og:description" content="Оберіть сет, вкажіть адресу — і ми доставимо!" />
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Суші Бот</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
-    body { 
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-      padding: 16px; 
-      max-width: 600px; 
-      margin: 0 auto; 
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      padding: 16px;
+      margin: 0;
       background: #fff;
+      max-width: 500px;
+      margin: 0 auto;
     }
-    .item { 
-      margin: 12px 0; padding: 12px; border-radius: 12px; 
-      display: flex; align-items: center; 
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    .screen { display: none; }
+    .active { display: block; }
+    .category-btn {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      margin: 8px 0;
+      background: #ff6347;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 18px;
+      cursor: pointer;
     }
-    .cart { 
-      background: #f0fff0; padding: 16px; margin-top: 20px; border-radius: 12px; 
+    .slider img {
+      width: 100%;
+      max-height: 300px;
+      object-fit: cover;
+      border-radius: 12px;
+      margin: 10px 0;
     }
-    input, button { 
-      padding: 10px; margin: 6px 0; border: 1px solid #ddd; border-radius: 8px; width: 100%; box-sizing: border-box;
+    .controls {
+      display: flex;
+      justify-content: space-between;
+      margin: 20px 0;
     }
-    button { 
-      background: #ff6347; color: white; border: none; font-weight: bold; cursor: pointer;
+    .ctrl-btn {
+      padding: 10px 16px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      background: #f0f0f0;
+      cursor: pointer;
     }
-    button:hover { background: #e0553b; }
-    img { 
-      width: 80px; height: 80px; object-fit: cover; border-radius: 8px; margin-right: 15px; 
+    .order-btn {
+      background: #2e8b57 !important;
+      color: white;
     }
+    .description {
+      background: #f9f9f9;
+      padding: 12px;
+      border-radius: 8px;
+      margin-top: 15px;
+    }
+    button.back {
+      width: 100%;
+      padding: 12px;
+      margin-top: 15px;
+      background: #6c757d;
+      color: white;
+      border: none;
+      border-radius: 8px;
+    }
+    h2 { text-align: center; }
   </style>
 </head>
 <body>
-  <h1>🍣 Меню Сетів</h1>
-  <div id="menu"></div>
 
-  <div class="cart">
-    <h2>🛒 Кошик</h2>
-    <div id="cart-items"></div>
+<!-- Екран 1: Вибір категорії -->
+<div id="screen-menu" class="screen active">
+  <h2>🍽️ Оберіть категорію</h2>
+  <button class="category-btn" onclick="loadCategory('sets')">Сети</button>
+  <button class="category-btn" onclick="loadCategory('sushi')">Суші</button>
+  <button class="category-btn" onclick="loadCategory('drinks')">Напої</button>
+</div>
 
-    <h3>Ваші дані:</h3>
-    <input type="text" id="name" placeholder="Ім’я (обов’язково)">
-    <input type="tel" id="phone" placeholder="Телефон (обов’язково)">
-    <input type="text" id="address" placeholder="Адреса доставки (обов’язково)">
-
-    <button onclick="placeOrder()">✅ Замовити</button>
+<!-- Екран 2: Слайдер -->
+<div id="screen-slider" class="screen">
+  <div class="slider">
+    <img id="item-image" src="" alt="Страва">
   </div>
+  <div class="controls">
+    <button class="ctrl-btn" id="prev" onclick="prevItem()">◀</button>
+    <button class="ctrl-btn order-btn" onclick="orderCurrent()">✅ Замовити</button>
+    <button class="ctrl-btn" id="next" onclick="nextItem()">▶</button>
+  </div>
+  <div class="description">
+    <h3 id="item-name"></h3>
+    <p><strong id="item-price"></strong></p>
+    <p id="item-desc"></p>
+  </div>
+  <button class="back" onclick="goBack()">← Назад до категорій</button>
+</div>
 
-  <script>
-    let cart = [];
-    let menuMap = {};
-    const API_URL = "https://script.google.com/macros/s/AKfycbyFe8EA4lSeHEiLzaj0SqzzxFVGB4tlK6K5PjdqgnKmI6fYlUi7VMEWUC0QlKpnsytJFA/exec";
+<script>
+  const API_URL = "https://script.google.com/macros/s/AKfycbzVGbe8K48FStFAj94HYh-yunTo2ckczl8X0vVU0GlMH_lEB_uQTPGMix9O36zKKs-Ocw/exec";
+  const ORDER_URL = API_URL; // будемо використовувати той самий endpoint для замовлення
 
-    // Завантажуємо меню
-    fetch(API_URL)
-      .then(res => res.json())
-      .then(menu => {
-        menu.forEach(item => {
-          menuMap[item.id] = item.name;
-          const el = document.createElement("div");
-          el.className = "item";
-          el.innerHTML = `
-            <img src="${item.image}" alt="${item.name}" loading="lazy">
-            <div>
-              <strong>${item.name}</strong><br>
-              ${item.price} грн<br>
-              <button onclick="addToCart(${item.id})">➕ Додати</button>
-            </div>
-          `;
-          document.getElementById("menu").appendChild(el);
-        });
-      });
+  let currentCategory = [];
+  let currentIndex = 0;
 
-    function addToCart(id) {
-      const exists = cart.find(i => i.id == id);
-      if (exists) exists.qty++;
-      else cart.push({ id, qty: 1 });
-      renderCart();
-    }
-
-    function renderCart() {
-      const div = document.getElementById("cart-items");
-      if (cart.length === 0) {
-        div.innerHTML = "<em>Кошик порожній</em>";
-        return;
-      }
-      div.innerHTML = cart.map(i => {
-        const name = menuMap[i.id] || `ID ${i.id}`;
-        return `<div>✅ ${name}: ${i.qty} шт</div>`;
-      }).join("");
-    }
-
-   function placeOrder() {
-  const name = document.getElementById("name").value.trim();
-  const phone = document.getElementById("phone").value.trim();
-  const address = document.getElementById("address").value.trim();
-
-  if (!name || !phone || !address) {
-    // Використовуємо Telegram Web App API замість alert()
-    if (window.Telegram?.WebApp) {
-      Telegram.WebApp.showAlert("Будь ласка, заповніть усі поля!");
-    } else {
-      alert("Будь ласка, заповніть усі поля!");
-    }
-    return;
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
   }
 
-  const itemsStr = cart.map(i => `${i.id}:${i.qty}`).join(",");
-  const url = `${API_URL}?items=${encodeURIComponent(itemsStr)}&name=${encodeURIComponent(name)}&phone=${encodeURIComponent(phone)}&address=${encodeURIComponent(address)}`;
+  function goBack() {
+    showScreen('screen-menu');
+  }
 
-  fetch(url)
-    .then(() => {
-      if (window.Telegram?.WebApp) {
-        Telegram.WebApp.showPopup({ title: "✅ Успіх!", message: "Замовлення прийнято!\nМи зателефонуємо вам найближчим часом." }, () => {
-          Telegram.WebApp.close();
+  function loadCategory(category) {
+    fetch(API_URL + "?category=" + category)
+      .then(res => res.json())
+      .then(data => {
+        if (data.error) throw new Error(data.error);
+        currentCategory = data;
+        currentIndex = 0;
+        if (currentCategory.length > 0) {
+          showItem(0);
+          showScreen('screen-slider');
+        } else {
+          alert("Категорія порожня");
+        }
+      })
+      .catch(err => {
+        alert("Помилка: " + err.message);
+      });
+  }
+
+  function showItem(index) {
+    const item = currentCategory[index];
+    document.getElementById('item-image').src = item.image || "https://via.placeholder.com/400x300?text=Фото+відсутнє";
+    document.getElementById('item-name').innerText = item.name || "—";
+    document.getElementById('item-price').innerText = item.price ? item.price + " грн" : "";
+    document.getElementById('item-desc').innerText = item.description || "Опис відсутній";
+
+    document.getElementById('prev').disabled = (index === 0);
+    document.getElementById('next').disabled = (index === currentCategory.length - 1);
+  }
+
+  function prevItem() {
+    if (currentIndex > 0) {
+      currentIndex--;
+      showItem(currentIndex);
+    }
+  }
+
+  function nextItem() {
+    if (currentIndex < currentCategory.length - 1) {
+      currentIndex++;
+      showItem(currentIndex);
+    }
+  }
+
+  function orderCurrent() {
+    const item = currentCategory[currentIndex];
+    const name = item.name;
+    const phone = prompt("Ваше ім’я та телефон (через кому):", "Ім’я, +380...");
+    const address = prompt("Адреса доставки:", "вул. Лісова, 10");
+
+    if (!phone || !address) {
+      Telegram.WebApp?.showAlert("Замовлення скасовано.");
+      return;
+    }
+
+    const [userName, userPhone] = phone.split(",").map(s => s.trim());
+
+    // Формат: items=ID:1
+    const url = `${ORDER_URL}?items=${item.id}:1&name=${encodeURIComponent(userName)}&phone=${encodeURIComponent(userPhone)}&address=${encodeURIComponent(address)}`;
+
+    fetch(url)
+      .then(() => {
+        Telegram.WebApp?.showPopup({
+          title: "✅ Замовлено!",
+          message: `Ви замовили:\n${item.name}\n\nОчікуйте дзвінка!`
+        }, () => {
+          Telegram.WebApp?.close();
         });
-      } else {
-        alert("✅ Замовлення прийнято!");
-      }
-    })
-    .catch(err => {
-      if (window.Telegram?.WebApp) {
-        Telegram.WebApp.showAlert("❌ Помилка: " + (err.message || "невідома"));
-      } else {
-        alert("❌ Помилка: " + err.message);
-      }
-    });
-}
-  </script>
+      })
+      .catch(err => {
+        Telegram.WebApp?.showAlert("Помилка: " + err.message);
+      });
+  }
+</script>
 </body>
 </html>
-
-
-
-
