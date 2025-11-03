@@ -148,6 +148,12 @@
       border-top: 1px dashed #ccc;
     }
     h2 { text-align: center; }
+
+    /* Стилі для заблокованої кнопки */
+    .submit.disabled {
+      background: #6c757d !important;
+      cursor: not-allowed;
+    }
   </style>
 </head>
 <body>
@@ -210,9 +216,7 @@
 </div>
 
 <script>
-  // 🔴 ТВІЙ НОВИЙ URL
-  const API_URL = "https://script.google.com/macros/s/AKfycbxBvr_0Nck0V2qrNdswXl78aJ19mn5Wyyp7I0pMppaU8webWNu18dClUEvZOP99bwitbg/exec";
-
+  const API_URL = "https://script.google.com/macros/s/AKfycbzok1gfmlLoCSCm1dkXnrCP42eLqCY3JHmoXrWlCW5PwRA-5rgM3wTn3FvPWRiRfj7CPg/exec";
   let currentCategory = [];
   let currentIndex = 0;
   let selectedItem = null;
@@ -238,7 +242,6 @@
 
     const now = Date.now();
     if (cached && lastFetch && (now - parseInt(lastFetch)) < 10 * 60 * 1000) {
-      // Використовуємо кеш (10 хвилин)
       try {
         currentCategory = JSON.parse(cached);
         currentIndex = 0;
@@ -254,12 +257,8 @@
       }
     }
 
-    // Запит до сервера
     fetch(API_URL + "?category=" + category)
-      .then(res => {
-        if (!res.ok) throw new Error("Сервер не відповідає");
-        return res.json();
-      })
+      .then(res => res.json())
       .then(data => {
         if (data.error) throw new Error(data.error);
         currentCategory = data;
@@ -406,6 +405,13 @@
     const itemsStr = items.join(",");
 
     const url = `${API_URL}?items=${encodeURIComponent(itemsStr)}&name=${encodeURIComponent(name)}&phone=${encodeURIComponent(phone)}&address=${encodeURIComponent(address)}`;
+
+    // Блокуємо кнопку
+    const btn = document.querySelector('.submit');
+    btn.classList.add('disabled');
+    btn.disabled = true;
+    btn.innerText = "⏳ Замовлення...";
+
     window.location.href = url;
   }
 </script>
